@@ -5,7 +5,6 @@ const session = require('express-session');
 const SteamAuth = require('node-steam-openid');
 const axios = require('axios');
 const crypto = require('crypto');
-const Rcon = require('rcon-srcds').default;
 
 const app = express();
 app.use(express.json());
@@ -20,9 +19,7 @@ app.use(session({
 
 const CONFIG = {
   MP_ACCESS_TOKEN: process.env.MP_ACCESS_TOKEN || 'COLE_SEU_ACCESS_TOKEN_DE_PRODUCAO_AQUI',
-  GMOD_HOST: process.env.GMOD_HOST || '84.20.19.207',
-  GMOD_PORT: process.env.GMOD_PORT || 58752,
-  GMOD_RCON_PASSWORD: process.env.GMOD_RCON_PASSWORD || 'TkRp_G3ms_Rc0n_2026!x9Q',
+  GMOD_SHARED_SECRET: process.env.GMOD_SHARED_SECRET || 'troque_por_um_segredo_compartilhado_com_o_addon',
   STEAM_API_KEY: process.env.STEAM_API_KEY || 'COLE_SUA_STEAM_API_KEY_AQUI',
   SITE_URL: process.env.SITE_URL || 'http://localhost:3001',
 };
@@ -34,6 +31,8 @@ const steam = new SteamAuth({
 });
 
 const pedidos = {};
+const filaCreditos = []; // [{ id, steamid, quantidade }] — consumida pelo addon Lua via HTTP
+const jogadoresOnline = new Set(); // atualizado pelo próprio addon Lua a cada heartbeat
 
 const PACOTES = {
   '80':    { gemas: 80,    preco: 1.99 },
@@ -97,28 +96,51 @@ app.get('/auth/me', (req, res) => {
   }
 });
 
-async function jogadorEstaOnline(steamid64) {
-  const rcon = new Rcon({
-    host: CONFIG.GMOD_HOST,
-    port: CONFIG.GMOD_PORT,
-    encoding: 'utf8',
-    timeout: 5000,
-  });
-
-  try {
-    await rcon.authenticate(CONFIG.GMOD_RCON_PASSWORD);
-    const resposta = await rcon.execute('status');
-    await rcon.disconnect();
-    return resposta.includes(steamid64);
-  } catch (err) {
-    console.error('Erro ao verificar status via RCON:', err.message);
-    return false;
-  }
+function jogadorEstaOnline(steamid64) {
+  return jogadoresOnline.has(steamid64);
 }
+
+app.post('/gmod/heartbeat', (req, res) => {
+  const { online_steamids, secret } = req.body;
+
+  if (secret !== CONFIG.GMOD_SHARED_SECRET) {
+    return res.status(401).json({ erro: 'Secret inválido' });
+  }
+
+  jogadoresOnline.clear();
+  (online_steamids || []).forEach(id => jogadoresOnline.add(id));
+
+  res.json({ ok: true, recebidos: jogadoresOnline.size });
+});
+
+app.get('/gmod/pendentes', (req, res) => {
+  const { secret } = req.query;
+
+  if (secret !== CONFIG.GMOD_SHARED_SECRET) {
+    return res.status(401).json({ erro: 'Secret inválido' });
+  }
+
+  res.json({ pendentes: filaCreditos });
+});
+
+app.post('/gmod/confirmar', (req, res) => {
+  const { id, secret } = req.body;
+
+  if (secret !== CONFIG.GMOD_SHARED_SECRET) {
+    return res.status(401).json({ erro: 'Secret inválido' });
+  }
+
+  const idx = filaCreditos.findIndex(c => c.id === id);
+  if (idx !== -1) {
+    filaCreditos.splice(idx, 1);
+  }
+
+  res.json({ ok: true });
+});
 
 app.get('/status-jogador/:steamid', async (req, res) => {
   try {
-    const online = await jogadorEstaOnline(req.params.steamid);
+    const online = jogadorEstaOnline(req.params.steamid);
     res.json({ online });
   } catch (error) {
     res.status(500).json({ online: false, erro: 'Erro ao verificar' });
@@ -168,11 +190,6 @@ app.post('/gerar-pix', async (req, res) => {
 
     if (!req.session.steamUser || req.session.steamUser.steamid !== steamid) {
       return res.status(401).json({ erro: 'É necessário fazer login com a Steam antes de comprar.' });
-    }
-
-    const online = await jogadorEstaOnline(steamid);
-    if (!online) {
-      return res.status(400).json({ erro: 'Você precisa estar conectado ao servidor para comprar gemas.' });
     }
 
     if (!pacote || !PACOTES[pacote]) {
@@ -258,9 +275,9 @@ app.get('/status-pagamento/:id', async (req, res) => {
     const payment = response.data;
 
     if (payment.status === 'approved' && pedido.status !== 'approved') {
-      await creditarGemas(pedido.steamid, pedido.gemas);
+      enfileirarCredito(pedido.steamid, pedido.gemas);
       pedido.status = 'approved';
-      console.log(`Gemas creditadas (polling): ${pedido.gemas} para ${pedido.steamid}`);
+      console.log(`Gemas enfileiradas (polling): ${pedido.gemas} para ${pedido.steamid}`);
     }
 
     res.json({ status: payment.status });
@@ -290,33 +307,22 @@ app.post('/webhook', async (req, res) => {
       const pedido = pedidos[paymentId];
       if (!pedido || pedido.status === 'approved') return;
 
-      await creditarGemas(pedido.steamid, pedido.gemas);
+      enfileirarCredito(pedido.steamid, pedido.gemas);
       pedido.status = 'approved';
-      console.log(`Gemas creditadas (webhook): ${pedido.gemas} para ${pedido.steamid}`);
+      console.log(`Gemas enfileiradas (webhook): ${pedido.gemas} para ${pedido.steamid}`);
     }
   } catch (error) {
     console.error('Erro no webhook:', error.response?.data || error.message);
   }
 });
 
-async function creditarGemas(steamid, quantidade) {
-  const rcon = new Rcon({
-    host: CONFIG.GMOD_HOST,
-    port: CONFIG.GMOD_PORT,
-    encoding: 'utf8',
-    timeout: 5000,
+function enfileirarCredito(steamid, quantidade) {
+  filaCreditos.push({
+    id: crypto.randomUUID(),
+    steamid,
+    quantidade,
+    criado_em: Date.now(),
   });
-
-  try {
-    await rcon.authenticate(CONFIG.GMOD_RCON_PASSWORD);
-    const comando = `takarp_gacha_givegems "${steamid}" ${quantidade}`;
-    const resposta = await rcon.execute(comando);
-    console.log('Resposta do servidor GMod:', resposta);
-    await rcon.disconnect();
-  } catch (err) {
-    console.error('Erro ao conectar via RCON:', err.message);
-    throw err;
-  }
 }
 
 app.get('/', (req, res) => {

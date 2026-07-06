@@ -3,315 +3,61 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Taka RP — Loja de Gemas</title>
+<title>Taka RP — Loja</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
   :root {
-    --ink: #120e0a;
-    --panel: #1c140d;
-    --panel-raised: #241a10;
-    --line: #3d2c1a;
-    --leaf: #4a9b5e;
-    --leaf-dim: #2c5c39;
-    --ember: #e8791f;
-    --ember-bright: #ffab3d;
-    --gold: #f0b429;
-    --text: #f5ede0;
-    --text-dim: #b0a08a;
-    --danger: #d9534f;
-    --success: #5fbf7a;
+    --ink: #17120d;
+    --paper: #251d15;
+    --paper-raised: #2e2318;
+    --line: #46392a;
+    --tile: #c94f2c;
+    --tile-bright: #e0673f;
+    --bamboo: #8ba888;
+    --bamboo-dim: #5c7359;
+    --scroll: #e8d4a0;
+    --text: #ede3d3;
+    --text-dim: #a89a84;
+    --danger: #c9564f;
+    --success: #7fae7a;
   }
 
   * { box-sizing: border-box; }
 
+  html { scroll-behavior: smooth; }
+
   body {
     margin: 0;
     min-height: 100vh;
-    background:
-      linear-gradient(180deg, rgba(18,14,10,0.55) 0%, rgba(18,14,10,0.88) 55%, var(--ink) 100%),
-      url('assets/bg-vila.jpeg') center 30% / cover no-repeat fixed;
+    background: var(--ink);
+    background-image:
+      linear-gradient(180deg, rgba(23,18,13,0.5) 0%, rgba(23,18,13,0.86) 60%, var(--ink) 100%),
+      url('assets/bg-vila.jpeg');
+    background-size: cover;
+    background-position: center 28%;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
     color: var(--text);
-    font-family: 'Noto Sans JP', sans-serif;
+    font-family: 'Inter', sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 96px 20px 80px;
+    padding-bottom: 60px;
   }
 
-  .brand {
-    text-align: center;
-    margin-bottom: 4px;
-  }
-  .brand img.logo {
-    width: 108px;
-    height: 108px;
-    filter: drop-shadow(0 6px 18px rgba(0,0,0,0.6));
-    margin-bottom: 10px;
-  }
-  .brand .kanji {
-    font-size: 12px;
-    letter-spacing: 6px;
-    color: var(--ember-bright);
-    text-transform: uppercase;
-    margin-bottom: 6px;
-    text-shadow: 0 2px 6px rgba(0,0,0,0.8);
-  }
-  .brand h1 {
-    font-family: 'Cinzel', serif;
-    font-weight: 900;
-    font-size: clamp(28px, 5vw, 40px);
-    margin: 0;
-    color: var(--gold);
-    text-shadow: 0 3px 0 #6b3a0f, 0 6px 14px rgba(0,0,0,0.7);
-    letter-spacing: 1px;
-  }
-  .brand p {
-    color: var(--text-dim);
-    margin: 8px 0 0;
-    font-size: 14px;
-    text-shadow: 0 2px 6px rgba(0,0,0,0.8);
-  }
-
-  .divider {
-    width: 70px;
-    height: 3px;
-    background: linear-gradient(90deg, transparent, var(--ember), var(--gold), var(--ember), transparent);
-    margin: 24px 0 32px;
-    border-radius: 2px;
-  }
-
-  .card {
-    width: 100%;
-    max-width: 500px;
-    background: linear-gradient(180deg, rgba(28,20,13,0.96), rgba(20,14,9,0.98));
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    padding: 28px;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03);
-    backdrop-filter: blur(2px);
-  }
-  .card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--leaf), var(--gold), var(--ember));
-  }
-
-  label {
-    display: block;
-    font-size: 12px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 10px;
-    margin-top: 22px;
-    font-weight: 500;
-  }
-  label:first-of-type { margin-top: 0; }
-
-  .packs {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-  }
-  .pack {
-    background: var(--panel-raised);
-    border: 1.5px solid var(--line);
-    border-radius: 12px;
-    padding: 12px 4px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color .15s, transform .15s, box-shadow .15s;
-    position: relative;
-  }
-  .pack:hover { transform: translateY(-3px); }
-  .pack.selected {
-    border-color: var(--gold);
-    background: linear-gradient(180deg, rgba(240,180,41,0.16), rgba(240,180,41,0.02));
-    box-shadow: 0 0 0 1px var(--gold), 0 8px 20px rgba(240,180,41,0.15);
-  }
-  .pack .amount {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-  }
-  .pack .amount img {
-    width: 20px;
-    height: 20px;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
-  }
-  .pack .amount span {
-    font-family: 'Cinzel', serif;
-    font-weight: 700;
-    font-size: 17px;
-    background: linear-gradient(180deg, var(--gold), var(--ember));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  .pack .label { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; margin-top: 2px; }
-  .pack .price { font-size: 12px; margin-top: 6px; color: var(--text); font-weight: 600; }
-  .pack .badge {
-    position: absolute;
-    top: -7px; right: -5px;
-    background: var(--leaf);
-    color: #fff;
-    font-size: 8px;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 20px;
-    letter-spacing: 0.3px;
-  }
-
-  input[type="text"], input[type="email"] {
-    width: 100%;
-    background: var(--panel-raised);
-    border: 1.5px solid var(--line);
-    border-radius: 10px;
-    padding: 13px 14px;
-    color: var(--text);
-    font-size: 14px;
-    font-family: inherit;
-  }
-  input:focus {
-    outline: none;
-    border-color: var(--ember-bright);
-  }
-  .hint {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-top: 6px;
-  }
-
-  button.gerar {
-    width: 100%;
-    margin-top: 28px;
-    padding: 16px;
-    border: none;
-    border-radius: 12px;
-    background: linear-gradient(135deg, var(--ember-bright), var(--ember) 60%, #b5540f);
-    color: #fff;
-    font-weight: 800;
-    font-size: 15px;
-    letter-spacing: 0.5px;
-    cursor: pointer;
-    transition: filter .15s, transform .1s;
-    box-shadow: 0 8px 20px rgba(232,121,31,0.35);
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-  }
-  button.gerar:hover { filter: brightness(1.08); }
-  button.gerar:active { transform: scale(0.98); }
-  button.gerar:disabled {
-    background: var(--line);
-    box-shadow: none;
-    cursor: not-allowed;
-  }
-
-  .erro {
-    background: rgba(217,83,79,0.14);
-    border: 1px solid rgba(217,83,79,0.4);
-    color: #f0a6a4;
-    padding: 10px 14px;
-    border-radius: 8px;
-    font-size: 13px;
-    margin-top: 16px;
-    display: none;
-  }
-
-  .resultado {
-    display: none;
-    margin-top: 12px;
-    text-align: center;
-    animation: fadeIn .35s ease;
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .qr-frame {
-    display: inline-block;
-    padding: 14px;
-    background: #fff;
-    border-radius: 14px;
-    border: 3px solid var(--gold);
-    box-shadow: 0 10px 30px rgba(240,180,41,0.25);
-  }
-  .resultado img {
-    width: 200px;
-    height: 200px;
-    display: block;
-  }
-  .resultado .valor {
-    font-family: 'Cinzel', serif;
-    font-size: 20px;
-    color: var(--gold);
-    margin: 16px 0 2px;
-  }
-  .resultado .subvalor {
-    font-size: 12px;
-    color: var(--text-dim);
-  }
-  .copiar-btn {
-    margin-top: 16px;
-    padding: 11px 22px;
-    background: var(--panel-raised);
-    border: 1.5px solid var(--leaf);
-    color: #8fdba3;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 700;
-  }
-  .copiar-btn:active { transform: scale(0.97); }
-
-  .status {
-    margin-top: 20px;
-    font-size: 13px;
-    color: var(--text-dim);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-  .status .dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--gold);
-  }
-  .status.aguardando .dot {
-    animation: pulse 1.4s infinite;
-  }
-  .status.aprovado .dot { background: var(--success); animation: none; }
-  .status.aprovado { color: var(--success); font-weight: 700; }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.25; }
-  }
-
-  footer {
-    margin-top: 36px;
-    color: var(--text-dim);
-    font-size: 12px;
-    text-align: center;
-    text-shadow: 0 2px 6px rgba(0,0,0,0.8);
-  }
-
+  /* ---------- Topbar ---------- */
   .topbar {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 56px;
-    background: rgba(18,14,10,0.92);
-    backdrop-filter: blur(8px);
+    position: sticky;
+    top: 0;
+    width: 100%;
+    height: 60px;
+    background: rgba(23,18,13,0.94);
     border-bottom: 1px solid var(--line);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
+    padding: 0 22px;
     z-index: 100;
   }
   .topbar-brand {
@@ -319,139 +65,368 @@
     align-items: center;
     gap: 10px;
   }
-  .topbar-brand img {
-    width: 30px;
-    height: 30px;
-  }
+  .topbar-brand img { width: 28px; height: 28px; border-radius: 6px; }
   .topbar-brand span {
-    font-family: 'Cinzel', serif;
-    font-weight: 700;
+    font-family: 'Zilla Slab', serif;
+    font-weight: 600;
     font-size: 15px;
-    color: var(--gold);
+    letter-spacing: 0.2px;
+    color: var(--scroll);
   }
-  .btn-steam-login {
+
+  .btn-steam {
     display: flex;
     align-items: center;
     gap: 8px;
     background: #1b2838;
-    border: 1px solid #2a475e;
+    border: 1px solid #32506b;
     color: #c7d5e0;
-    padding: 8px 16px;
-    border-radius: 8px;
+    padding: 8px 15px;
+    border-radius: 6px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
     cursor: pointer;
     text-decoration: none;
     transition: background .15s;
   }
-  .btn-steam-login:hover { background: #2a475e; }
-  .btn-steam-login svg { width: 18px; height: 18px; }
+  .btn-steam:hover { background: #24374a; }
+  .btn-steam svg { width: 16px; height: 16px; }
 
   .user-chip {
     display: flex;
     align-items: center;
-    gap: 8px;
-    background: var(--panel-raised);
+    gap: 9px;
+    background: var(--paper-raised);
     border: 1px solid var(--line);
-    border-radius: 20px;
-    padding: 5px 14px 5px 5px;
+    border-radius: 24px;
+    padding: 4px 6px 4px 4px;
   }
-  .user-chip img {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-  }
-  .user-chip span {
-    font-size: 13px;
-    color: var(--text);
-    font-weight: 600;
-  }
+  .user-chip img { width: 26px; height: 26px; border-radius: 50%; }
+  .user-chip span { font-size: 13px; font-weight: 600; }
   .user-chip button {
     background: none;
     border: none;
     color: var(--text-dim);
     font-size: 11px;
     cursor: pointer;
-    text-decoration: underline;
-    padding: 0;
+    padding: 0 6px;
+    font-family: 'Inter', sans-serif;
+  }
+  .user-chip button:hover { color: var(--text); }
+  .user-chip .sep { color: var(--line); }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    width: 100%;
+    max-width: 760px;
+    padding: 46px 24px 8px;
+    text-align: center;
+  }
+  .hero .eyebrow {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--tile-bright);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .hero h1 {
+    font-family: 'Zilla Slab', serif;
+    font-weight: 700;
+    font-size: clamp(30px, 5vw, 44px);
+    margin: 0 0 8px;
+    color: var(--scroll);
+    letter-spacing: -0.5px;
+  }
+  .hero p {
+    color: var(--text-dim);
+    font-size: 14.5px;
+    margin: 0;
+    max-width: 440px;
+    margin: 0 auto;
+    line-height: 1.5;
   }
 
-  .online-banner {
+  /* ---------- Status strip ---------- */
+  .status-strip {
     width: 100%;
-    max-width: 500px;
-    padding: 10px 16px;
-    border-radius: 10px;
+    max-width: 620px;
+    margin: 22px auto 0;
+    padding: 0 24px;
+  }
+  .online-banner {
+    padding: 11px 16px;
+    border-radius: 8px;
     font-size: 13px;
-    font-weight: 600;
-    text-align: center;
-    margin-bottom: 16px;
+    font-weight: 500;
+    text-align: left;
     display: none;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
+    gap: 10px;
+    border: 1px solid var(--line);
   }
-  .online-banner.offline {
-    background: rgba(217,83,79,0.14);
-    border: 1px solid rgba(217,83,79,0.4);
-    color: #f0a6a4;
-  }
-  .online-banner.online {
-    background: rgba(95,191,122,0.14);
-    border: 1px solid rgba(95,191,122,0.4);
-    color: #8fdba3;
-  }
-  .online-banner .dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-  }
+  .online-banner.offline { background: rgba(201,86,79,0.1); border-color: rgba(201,86,79,0.35); color: #e0a29d; }
+  .online-banner.online  { background: rgba(127,174,122,0.1); border-color: rgba(127,174,122,0.35); color: var(--success); }
+  .online-banner .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .online-banner.offline .dot { background: var(--danger); }
   .online-banner.online .dot { background: var(--success); }
 
-  .login-gate {
-    text-align: center;
-    padding: 24px 0 8px;
-  }
-  .login-gate p {
-    color: var(--text-dim);
-    font-size: 14px;
-    margin-bottom: 18px;
+  /* ---------- Main content ---------- */
+  .content {
+    width: 100%;
+    max-width: 620px;
+    padding: 24px 24px 0;
   }
 
-  .cupom-row {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 24px;
+  .section-label {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    font-weight: 600;
+    margin: 28px 0 12px;
   }
+  .section-label:first-child { margin-top: 0; }
+
+  /* ---------- Cupom ---------- */
+  .cupom-row { display: flex; gap: 8px; }
   .cupom-row input {
     flex: 1;
-    text-transform: uppercase;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 11px 13px;
+    color: var(--text);
+    font-size: 13.5px;
+    font-family: 'Inter', sans-serif;
   }
-  .cupom-row input::placeholder { text-transform: none; }
+  .cupom-row input::placeholder { color: var(--text-dim); text-transform: none; }
+  .cupom-row input:focus { outline: none; border-color: var(--tile); }
   .btn-aplicar-cupom {
-    background: var(--panel-raised);
-    border: 1.5px solid var(--line);
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
     color: var(--text);
     padding: 0 18px;
-    border-radius: 10px;
+    border-radius: 7px;
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
     cursor: pointer;
-    white-space: nowrap;
+    font-family: 'Inter', sans-serif;
   }
-  .btn-aplicar-cupom:hover { border-color: var(--gold); }
-  .cupom-msg {
-    font-size: 12px;
-    margin-top: -16px;
-    margin-bottom: 20px;
-    display: none;
-  }
+  .btn-aplicar-cupom:hover { border-color: var(--tile); }
+  .cupom-msg { font-size: 12.5px; margin-top: 8px; display: none; }
   .cupom-msg.sucesso { color: var(--success); }
-  .cupom-msg.erro { color: #f0a6a4; }
-  .preco-original {
+  .cupom-msg.erro { color: #e0a29d; }
+
+  /* ---------- Pacotes: lista com hierarquia, não grid uniforme ---------- */
+  .packs { display: flex; flex-direction: column; gap: 8px; }
+
+  .pack {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .pack:hover { border-color: #5c4a34; }
+  .pack.selected {
+    border-color: var(--tile);
+    background: linear-gradient(90deg, rgba(201,79,44,0.1), rgba(201,79,44,0.02));
+  }
+
+  .pack .icon-wrap {
+    width: 38px; height: 38px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pack .icon-wrap img { width: 30px; height: 30px; }
+
+  .pack .info { flex: 1; min-width: 0; }
+  .pack .info .qtd {
+    font-family: 'Zilla Slab', serif;
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--scroll);
+  }
+  .pack .info .qtd .bonus { color: var(--bamboo); font-size: 13px; font-weight: 500; margin-left: 5px; }
+  .pack .info .desc { font-size: 11.5px; color: var(--text-dim); margin-top: 1px; }
+
+  .pack .price {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .pack .price .original {
+    display: block;
     text-decoration: line-through;
     color: var(--text-dim);
     font-size: 11px;
-    margin-right: 4px;
+    line-height: 1.3;
+  }
+  .pack .price .final {
+    font-weight: 700;
+    font-size: 15.5px;
+    color: var(--text);
+  }
+
+  /* Pacote em destaque — hierarquia real, não decoração */
+  .pack.destaque {
+    border-color: var(--tile);
+    background: linear-gradient(90deg, rgba(201,79,44,0.14), rgba(201,79,44,0.03));
+    padding: 18px 16px;
+  }
+  .pack.destaque .icon-wrap { width: 46px; height: 46px; }
+  .pack.destaque .icon-wrap img { width: 36px; height: 36px; }
+  .pack.destaque .info .qtd { font-size: 20px; }
+  .pack.destaque .price .final { font-size: 18px; color: var(--tile-bright); }
+  .pack.destaque .tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--tile-bright);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  /* ---------- Botão de ação ---------- */
+  .cta-wrap { margin-top: 24px; }
+  button.gerar {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 9px;
+    background: var(--tile);
+    color: #fff;
+    font-weight: 600;
+    font-size: 14.5px;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  button.gerar:hover:not(:disabled) { background: var(--tile-bright); }
+  button.gerar:disabled { background: var(--paper-raised); color: var(--text-dim); cursor: not-allowed; }
+
+  label.field-label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin: 18px 0 8px;
+    font-weight: 500;
+  }
+  input[type="email"] {
+    width: 100%;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 11px 13px;
+    color: var(--text);
+    font-size: 13.5px;
+    font-family: 'Inter', sans-serif;
+  }
+  input[type="email"]:focus { outline: none; border-color: var(--tile); }
+
+  .erro-box {
+    background: rgba(201,86,79,0.1);
+    border: 1px solid rgba(201,86,79,0.35);
+    color: #e0a29d;
+    padding: 10px 14px;
+    border-radius: 7px;
+    font-size: 13px;
+    margin-top: 14px;
+    display: none;
+  }
+
+  /* ---------- Resultado / QR ---------- */
+  .resultado { display: none; text-align: center; padding: 8px 0; }
+  .qr-frame {
+    display: inline-block;
+    padding: 12px;
+    background: var(--scroll);
+    border-radius: 10px;
+    border: 1px solid #d4be82;
+  }
+  .qr-frame img { width: 188px; height: 188px; display: block; }
+  .resultado .valor {
+    font-family: 'Zilla Slab', serif;
+    font-weight: 600;
+    font-size: 18px;
+    color: var(--scroll);
+    margin: 16px 0 2px;
+  }
+  .resultado .subvalor { font-size: 12.5px; color: var(--text-dim); }
+  .copiar-btn {
+    margin-top: 14px;
+    padding: 10px 20px;
+    background: var(--paper-raised);
+    border: 1px solid var(--bamboo-dim);
+    color: var(--bamboo);
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+  }
+  .status-pix {
+    margin-top: 18px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+  .status-pix .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--tile-bright); }
+  .status-pix.aguardando .dot { animation: pulse 1.6s infinite; }
+  .status-pix.aprovado .dot { background: var(--success); animation: none; }
+  .status-pix.aprovado { color: var(--success); font-weight: 600; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+  footer {
+    margin-top: 44px;
+    color: var(--text-dim);
+    font-size: 11.5px;
+    text-align: center;
+    max-width: 400px;
+  }
+
+  /* ---------- Painel modal ---------- */
+  .painel-overlay {
+    position: fixed; inset: 0;
+    background: rgba(10,8,5,0.7);
+    z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .painel-box {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 22px;
+    max-width: 400px;
+    width: 100%;
+    max-height: 78vh;
+    overflow-y: auto;
+  }
+  .painel-box h3 {
+    font-family: 'Zilla Slab', serif;
+    color: var(--scroll);
+    margin: 0 0 4px;
+    font-size: 18px;
+  }
+  .painel-box .total { color: var(--text-dim); font-size: 13px; margin: 0 0 16px; }
+  .painel-box .total strong { color: var(--tile-bright); }
+  .painel-box table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .painel-box td { padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .painel-box .fechar {
+    width: 100%; margin-top: 16px; padding: 10px;
+    background: var(--paper-raised); border: 1px solid var(--line);
+    color: var(--text); border-radius: 7px; cursor: pointer;
+    font-family: 'Inter', sans-serif; font-size: 13px;
   }
 </style>
 </head>
@@ -460,112 +435,118 @@
   <div class="topbar">
     <div class="topbar-brand">
       <img src="assets/logo.png" alt="TRP">
-      <span>TAKA RP STORE</span>
+      <span>Taka RP</span>
     </div>
     <div id="topbarUser">
-      <a href="/auth/steam" class="btn-steam-login">
+      <a href="/auth/steam" class="btn-steam">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12c0 4.4 2.9 8.2 6.9 9.5.3-.6.5-1.3.5-2v-3.4c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-4.9 0-1.1.4-2 1-2.7-.1-.3-.5-1.3.1-2.7 0 0 .8-.3 2.7 1 .8-.2 1.6-.3 2.5-.3s1.7.1 2.5.3c1.9-1.3 2.7-1 2.7-1 .6 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.8-2.4 4.6-4.6 4.9.4.3.7.9.7 1.9v2.8c0 .7.2 1.4.5 2 4-1.3 6.9-5.1 6.9-9.5C22 6.5 17.5 2 12 2z"/></svg>
         Entrar com Steam
       </a>
     </div>
   </div>
 
-  <div class="brand">
-    <img src="assets/logo.png" alt="TRP" class="logo">
-    <div class="kanji">火 · KONOHA STORE</div>
-    <h1>Taka RP</h1>
-    <p>Loja de Gemas — pagamento via Pix</p>
+  <div class="hero">
+    <div class="eyebrow">Konoha · Loja Oficial</div>
+    <h1>Gemas para o Taka RP</h1>
+    <p>Pagamento via Pix, entrega automática assim que a Vila confirmar o pagamento.</p>
   </div>
 
-  <div class="divider"></div>
-
-  <div class="online-banner offline" id="onlineBanner">
-    <div class="dot"></div>
-    <span id="onlineBannerTexto">Verificando status do servidor...</span>
+  <div class="status-strip">
+    <div class="online-banner offline" id="onlineBanner">
+      <div class="dot"></div>
+      <span id="onlineBannerTexto">Verificando sua presença na Vila...</span>
+    </div>
   </div>
 
-  <div class="card" id="formCard">
+  <div class="content">
     <div id="conteudoCompra">
-    <label>Tem um cupom de desconto?</label>
-    <div class="cupom-row">
-      <input type="text" id="cupomInput" placeholder="Digite o código (opcional)">
-      <button class="btn-aplicar-cupom" id="btnAplicarCupom">Aplicar</button>
-    </div>
-    <div class="cupom-msg" id="cupomMsg"></div>
 
-    <label>Escolha o pacote</label>
-    <div class="packs" id="packs">
-      <div class="pack" data-pack="80" data-preco="1.99">
-        <div class="amount"><img src="assets/gema.webp" alt=""><span>80</span></div>
-        <div class="label">GEMAS</div>
-        <div class="price">R$ 1,99</div>
+      <div class="section-label">Cupom de desconto</div>
+      <div class="cupom-row">
+        <input type="text" id="cupomInput" placeholder="Tem um código? Digite aqui">
+        <button class="btn-aplicar-cupom" id="btnAplicarCupom">Aplicar</button>
       </div>
-      <div class="pack" data-pack="160" data-preco="3.99">
-        <div class="amount"><img src="assets/gema.webp" alt=""><span>160</span></div>
-        <div class="label">GEMAS</div>
-        <div class="price">R$ 3,99</div>
-      </div>
-      <div class="pack" data-pack="375" data-preco="7.99">
-        <div class="badge">+25</div>
-        <div class="amount"><img src="assets/gema.webp" alt=""><span>350</span></div>
-        <div class="label">GEMAS</div>
-        <div class="price">R$ 7,99</div>
-      </div>
-      <div class="pack" data-pack="550" data-preco="12.49">
-        <div class="badge">+50</div>
-        <div class="amount"><img src="assets/gema.webp" alt=""><span>500</span></div>
-        <div class="label">GEMAS</div>
-        <div class="price">R$ 12,49</div>
-      </div>
-      <div class="pack" data-pack="1050" data-preco="19.99">
-        <div class="badge">+150</div>
-        <div class="amount"><img src="assets/gema.webp" alt=""><span>900</span></div>
-        <div class="label">GEMAS</div>
-        <div class="price">R$ 19,99</div>
-      </div>
-      <div class="pack" data-pack="2200" data-preco="39.99">
-        <div class="badge">+400</div>
-        <div class="amount"><img src="assets/gema.webp" alt=""><span>1800</span></div>
-        <div class="label">GEMAS</div>
-        <div class="price">R$ 39,99</div>
-      </div>
-      <div class="pack" data-pack="3900" data-preco="69.99">
-        <div class="badge">+900</div>
-        <div class="amount"><img src="assets/gema.webp" alt=""><span>3000</span></div>
-        <div class="label">GEMAS</div>
-        <div class="price">R$ 69,99</div>
-      </div>
-      <div class="pack" data-pack="10000" data-preco="186.99">
-        <div class="badge">+2500</div>
-        <div class="amount"><img src="assets/gema.webp" alt=""><span>7500</span></div>
-        <div class="label">GEMAS</div>
-        <div class="price">R$ 186,99</div>
-      </div>
-    </div>
+      <div class="cupom-msg" id="cupomMsg"></div>
 
-    <label for="email">Seu e-mail (recibo do pagamento)</label>
-    <input type="email" id="email" placeholder="seuemail@exemplo.com">
+      <div class="section-label">Pacotes de gemas</div>
+      <div class="packs" id="packs">
+        <div class="pack" data-pack="80" data-preco="1.99" data-gemas="80">
+          <div class="icon-wrap"><img src="assets/gema.webp" alt=""></div>
+          <div class="info"><div class="qtd">80</div><div class="desc">gemas</div></div>
+          <div class="price"><span class="final">R$ 1,99</span></div>
+        </div>
 
-    <button class="gerar" id="btnGerar" disabled>Selecione um pacote</button>
+        <div class="pack" data-pack="160" data-preco="3.99" data-gemas="160">
+          <div class="icon-wrap"><img src="assets/gema.webp" alt=""></div>
+          <div class="info"><div class="qtd">160</div><div class="desc">gemas</div></div>
+          <div class="price"><span class="final">R$ 3,99</span></div>
+        </div>
 
-    <div class="erro" id="erroBox"></div>
+        <div class="pack" data-pack="375" data-preco="7.99" data-gemas="375">
+          <div class="icon-wrap"><img src="assets/gema.webp" alt=""></div>
+          <div class="info"><div class="qtd">350<span class="bonus">+25 bônus</span></div><div class="desc">gemas</div></div>
+          <div class="price"><span class="final">R$ 7,99</span></div>
+        </div>
 
-    <div class="resultado" id="resultado">
-      <div class="qr-frame">
-        <img id="qrImg" src="" alt="QR Code Pix">
+        <div class="pack" data-pack="550" data-preco="12.49" data-gemas="550">
+          <div class="icon-wrap"><img src="assets/gema.webp" alt=""></div>
+          <div class="info"><div class="qtd">500<span class="bonus">+50 bônus</span></div><div class="desc">gemas</div></div>
+          <div class="price"><span class="final">R$ 12,49</span></div>
+        </div>
+
+        <div class="pack destaque" data-pack="1050" data-preco="19.99" data-gemas="1050">
+          <div class="icon-wrap"><img src="assets/gema.webp" alt=""></div>
+          <div class="info">
+            <div class="tag">Mais escolhido</div>
+            <div class="qtd">900<span class="bonus">+150 bônus</span></div>
+            <div class="desc">gemas</div>
+          </div>
+          <div class="price"><span class="final">R$ 19,99</span></div>
+        </div>
+
+        <div class="pack" data-pack="2200" data-preco="39.99" data-gemas="2200">
+          <div class="icon-wrap"><img src="assets/gema.webp" alt=""></div>
+          <div class="info"><div class="qtd">1800<span class="bonus">+400 bônus</span></div><div class="desc">gemas</div></div>
+          <div class="price"><span class="final">R$ 39,99</span></div>
+        </div>
+
+        <div class="pack" data-pack="3900" data-preco="69.99" data-gemas="3900">
+          <div class="icon-wrap"><img src="assets/gema.webp" alt=""></div>
+          <div class="info"><div class="qtd">3000<span class="bonus">+900 bônus</span></div><div class="desc">gemas</div></div>
+          <div class="price"><span class="final">R$ 69,99</span></div>
+        </div>
+
+        <div class="pack" data-pack="10000" data-preco="186.99" data-gemas="10000">
+          <div class="icon-wrap"><img src="assets/gema.webp" alt=""></div>
+          <div class="info"><div class="qtd">7500<span class="bonus">+2500 bônus</span></div><div class="desc">gemas</div></div>
+          <div class="price"><span class="final">R$ 186,99</span></div>
+        </div>
       </div>
-      <div class="valor" id="valorPago"></div>
-      <div class="subvalor">Escaneie com o app do seu banco</div>
-      <button class="copiar-btn" id="btnCopiar">Copiar código Pix</button>
-      <div class="status aguardando" id="statusPix">
-        <div class="dot"></div>
-        <span id="statusTexto">Aguardando pagamento...</span>
+
+      <label class="field-label" for="email" style="display:none;">E-mail para recibo do pagamento</label>
+      <input type="email" id="email" placeholder="seuemail@exemplo.com" style="display:none;">
+
+      <div class="cta-wrap">
+        <button class="gerar" id="btnGerar" disabled>Selecione um pacote</button>
       </div>
-    </div>
+
+      <div class="erro-box" id="erroBox"></div>
+
+      <div class="resultado" id="resultado">
+        <div class="qr-frame"><img id="qrImg" src="" alt="QR Code Pix"></div>
+        <div class="valor" id="valorPago"></div>
+        <div class="subvalor">Escaneie com o app do seu banco</div>
+        <button class="copiar-btn" id="btnCopiar">Copiar código Pix</button>
+        <div class="status-pix aguardando" id="statusPix">
+          <div class="dot"></div>
+          <span id="statusTexto">Aguardando pagamento...</span>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <footer>As gemas são creditadas automaticamente após a confirmação do Pix.</footer>
+  <footer>As gemas são creditadas automaticamente após a confirmação do Pix. Precisa estar conectado ao servidor no momento da compra.</footer>
 
 <script>
   const API_BASE = '';
@@ -575,11 +556,8 @@
   let statusOnlineInterval = null;
   let codigoPixAtual = '';
   let usuarioLogado = null;
-  let cupomAtivo = null; // { codigo, desconto_percentual }
+  let cupomAtivo = null;
 
-  // ============================================
-  // CUPOM
-  // ============================================
   document.getElementById('btnAplicarCupom').addEventListener('click', aplicarCupom);
   document.getElementById('cupomInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') aplicarCupom();
@@ -589,7 +567,6 @@
     const input = document.getElementById('cupomInput');
     const msg = document.getElementById('cupomMsg');
     const codigo = input.value.trim();
-
     if (!codigo) return;
 
     try {
@@ -606,7 +583,7 @@
       }
 
       cupomAtivo = data;
-      msg.textContent = `Cupom aplicado! ${data.desconto_percentual}% de desconto em todos os pacotes.`;
+      msg.textContent = `Cupom aplicado — ${data.desconto_percentual}% de desconto em todos os pacotes.`;
       msg.className = 'cupom-msg sucesso';
       msg.style.display = 'block';
       atualizarPrecosExibidos();
@@ -617,98 +594,31 @@
     }
   }
 
+  function precoFinalDe(el) {
+    const original = parseFloat(el.dataset.preco);
+    if (!cupomAtivo) return original;
+    return Math.round((original * (1 - cupomAtivo.desconto_percentual / 100)) * 100) / 100;
+  }
+
   function atualizarPrecosExibidos() {
     document.querySelectorAll('.pack').forEach(el => {
-      const precoOriginal = parseFloat(el.dataset.preco);
-      const precoEl = el.querySelector('.price');
+      const original = parseFloat(el.dataset.preco);
+      const priceEl = el.querySelector('.price');
 
       if (cupomAtivo) {
-        const precoComDesconto = Math.round((precoOriginal * (1 - cupomAtivo.desconto_percentual / 100)) * 100) / 100;
-        precoEl.innerHTML = `<span class="preco-original">R$ ${precoOriginal.toFixed(2)}</span> R$ ${precoComDesconto.toFixed(2)}`;
+        const final = precoFinalDe(el);
+        priceEl.innerHTML = `<span class="original">R$ ${original.toFixed(2)}</span><span class="final">R$ ${final.toFixed(2)}</span>`;
       } else {
-        precoEl.textContent = `R$ ${precoOriginal.toFixed(2)}`;
+        priceEl.innerHTML = `<span class="final">R$ ${original.toFixed(2)}</span>`;
       }
     });
 
-    // Atualiza o texto do botão se já tiver pacote selecionado
     if (pacoteSelecionado) {
       const el = document.querySelector(`.pack[data-pack="${pacoteSelecionado}"]`);
       const btn = document.getElementById('btnGerar');
-      const precoOriginal = parseFloat(el.dataset.preco);
-      const precoFinal = cupomAtivo
-        ? Math.round((precoOriginal * (1 - cupomAtivo.desconto_percentual / 100)) * 100) / 100
-        : precoOriginal;
       if (usuarioLogado) {
-        btn.textContent = `Gerar Pix — R$ ${precoFinal.toFixed(2)}`;
+        btn.textContent = `Gerar Pix — R$ ${precoFinalDe(el).toFixed(2)}`;
       }
-    }
-  }
-
-  // ============================================
-  // Checagem inicial: login + status online
-  // ============================================
-  async function init() {
-    await checarLogin();
-    if (usuarioLogado) {
-      await checarStatusOnline();
-      statusOnlineInterval = setInterval(checarStatusOnline, 10000);
-    } else {
-      // Sem login: esconde o banner de status (não faz sentido sem SteamID)
-      document.getElementById('onlineBanner').style.display = 'none';
-    }
-  }
-
-  async function checarLogin() {
-    try {
-      const resp = await fetch('/auth/me');
-      const data = await resp.json();
-
-      if (data.logado) {
-        usuarioLogado = data;
-        document.getElementById('onlineBanner').style.display = 'flex';
-
-        document.getElementById('topbarUser').innerHTML = `
-          <div class="user-chip">
-            <img src="${data.avatar}" alt="">
-            <span>${data.username}</span>
-            <button id="btnPainel" style="margin-left:4px;">Meu painel</button>
-            <button id="btnLogout">Sair</button>
-          </div>
-        `;
-        document.getElementById('btnPainel').addEventListener('click', abrirPainel);
-        document.getElementById('btnLogout').addEventListener('click', async () => {
-          await fetch('/auth/logout', { method: 'POST' });
-          location.reload();
-        });
-      }
-    } catch (err) {
-      console.error('Erro ao checar login:', err);
-    }
-  }
-
-  async function checarStatusOnline() {
-    if (!usuarioLogado) return;
-    const banner = document.getElementById('onlineBanner');
-    const texto = document.getElementById('onlineBannerTexto');
-    const btn = document.getElementById('btnGerar');
-
-    try {
-      const resp = await fetch(`/status-jogador/${usuarioLogado.steamid}`);
-      const data = await resp.json();
-
-      if (data.online) {
-        banner.classList.remove('offline');
-        banner.classList.add('online');
-        texto.textContent = 'Você está online no servidor. Pode comprar!';
-        if (pacoteSelecionado) btn.disabled = false;
-      } else {
-        banner.classList.remove('online');
-        banner.classList.add('offline');
-        texto.textContent = 'Você precisa estar conectado ao servidor para comprar.';
-        btn.disabled = true;
-      }
-    } catch (err) {
-      texto.textContent = 'Não foi possível verificar o status do servidor.';
     }
   }
 
@@ -719,22 +629,19 @@
       pacoteSelecionado = el.dataset.pack;
       const btn = document.getElementById('btnGerar');
       const banner = document.getElementById('onlineBanner');
-
-      const precoOriginal = parseFloat(el.dataset.preco);
-      const precoFinal = cupomAtivo
-        ? Math.round((precoOriginal * (1 - cupomAtivo.desconto_percentual / 100)) * 100) / 100
-        : precoOriginal;
+      const emailInput = document.getElementById('email');
+      const emailLabel = document.querySelector('label[for="email"]');
 
       if (!usuarioLogado) {
         btn.disabled = false;
-        btn.textContent = `Entrar com Steam para comprar`;
-        document.getElementById('email').style.display = 'none';
-        document.querySelector('label[for="email"]').style.display = 'none';
+        btn.textContent = 'Entrar com Steam para comprar';
+        emailInput.style.display = 'none';
+        emailLabel.style.display = 'none';
       } else {
-        btn.disabled = !banner.classList.contains('online');
-        btn.textContent = `Gerar Pix — R$ ${precoFinal.toFixed(2)}`;
-        document.getElementById('email').style.display = 'block';
-        document.querySelector('label[for="email"]').style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = `Gerar Pix — R$ ${precoFinalDe(el).toFixed(2)}`;
+        emailInput.style.display = 'block';
+        emailLabel.style.display = 'block';
       }
     });
   });
@@ -749,7 +656,7 @@
     const erroBox = document.getElementById('erroBox');
     erroBox.style.display = 'none';
 
-    if (!pacoteSelecionado || !usuarioLogado) return;
+    if (!pacoteSelecionado) return;
     if (!email || !email.includes('@')) {
       erroBox.textContent = 'Digite um e-mail válido.';
       erroBox.style.display = 'block';
@@ -783,13 +690,14 @@
 
       document.getElementById('qrImg').src = `data:image/png;base64,${data.qr_code_base64}`;
       document.getElementById('valorPago').innerHTML =
-        `R$ ${data.valor.toFixed(2)} — <img src="assets/gema.webp" alt="" style="width:18px;height:18px;vertical-align:-3px;">&nbsp;${data.gemas}`;
+        `R$ ${data.valor.toFixed(2)} <img src="assets/gema.webp" alt="" style="width:16px;height:16px;vertical-align:-2px;margin:0 2px;"> ${data.gemas}`;
       codigoPixAtual = data.qr_code;
       document.getElementById('resultado').style.display = 'block';
 
       document.getElementById('packs').style.display = 'none';
-      document.querySelectorAll('#conteudoCompra label').forEach(l => l.style.display = 'none');
+      document.querySelectorAll('.section-label, .cupom-row, .cupom-msg').forEach(el => el.style.display = 'none');
       document.getElementById('email').style.display = 'none';
+      document.querySelector('label[for="email"]').style.display = 'none';
       btn.style.display = 'none';
 
       iniciarPolling(data.payment_id);
@@ -822,10 +730,71 @@
           statusEl.classList.add('aprovado');
           document.getElementById('statusTexto').textContent = 'Pago! Gemas creditadas — entre no servidor.';
         }
-      } catch (err) {
-        // silencioso — tenta de novo no próximo ciclo
-      }
+      } catch (err) { /* tenta de novo no próximo ciclo */ }
     }, 4000);
+  }
+
+  async function init() {
+    await checarLogin();
+    if (usuarioLogado) {
+      await checarStatusOnline();
+      statusOnlineInterval = setInterval(checarStatusOnline, 10000);
+    } else {
+      document.getElementById('onlineBanner').style.display = 'none';
+    }
+  }
+
+  async function checarLogin() {
+    try {
+      const resp = await fetch('/auth/me');
+      const data = await resp.json();
+
+      if (data.logado) {
+        usuarioLogado = data;
+        document.getElementById('onlineBanner').style.display = 'flex';
+
+        document.getElementById('topbarUser').innerHTML = `
+          <div class="user-chip">
+            <img src="${data.avatar}" alt="">
+            <span>${data.username}</span>
+            <span class="sep">·</span>
+            <button id="btnPainel">Meu painel</button>
+            <span class="sep">·</span>
+            <button id="btnLogout">Sair</button>
+          </div>
+        `;
+        document.getElementById('btnPainel').addEventListener('click', abrirPainel);
+        document.getElementById('btnLogout').addEventListener('click', async () => {
+          await fetch('/auth/logout', { method: 'POST' });
+          location.reload();
+        });
+      }
+    } catch (err) {
+      console.error('Erro ao checar login:', err);
+    }
+  }
+
+  async function checarStatusOnline() {
+    if (!usuarioLogado) return;
+    const banner = document.getElementById('onlineBanner');
+    const texto = document.getElementById('onlineBannerTexto');
+
+    try {
+      const resp = await fetch(`/status-jogador/${usuarioLogado.steamid}`);
+      const data = await resp.json();
+
+      if (data.online) {
+        banner.classList.remove('offline');
+        banner.classList.add('online');
+        texto.textContent = 'Você está conectado ao servidor.';
+      } else {
+        banner.classList.remove('online');
+        banner.classList.add('offline');
+        texto.textContent = 'Você está offline. Pode comprar mesmo assim — as gemas chegam na próxima vez que entrar no servidor.';
+      }
+    } catch (err) {
+      texto.textContent = 'Não foi possível verificar sua conexão com o servidor.';
+    }
   }
 
   async function abrirPainel() {
@@ -838,27 +807,25 @@
             <tr>
               <td>#${c.payment_id}</td>
               <td>${c.gemas} gemas</td>
-              <td style="color:${c.status === 'approved' ? '#8fdba3' : '#b0a08a'}">
+              <td style="text-align:right;color:${c.status === 'approved' ? 'var(--success)' : 'var(--text-dim)'}">
                 ${c.status === 'approved' ? 'Pago' : 'Pendente'}
               </td>
             </tr>`).join('')
-        : `<tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:16px;">Nenhuma compra ainda.</td></tr>`;
+        : `<tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:16px 0;">Nenhuma compra ainda.</td></tr>`;
 
-      const modal = document.createElement('div');
-      modal.style = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;';
-      modal.innerHTML = `
-        <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto;">
-          <h3 style="font-family:'Cinzel',serif;color:var(--gold);margin:0 0 4px;">Meu Painel</h3>
-          <p style="color:var(--text-dim);font-size:13px;margin:0 0 16px;">Total comprado: <strong style="color:var(--gold);">${data.total_gemas_compradas} gemas</strong></p>
-          <table style="width:100%;border-collapse:collapse;font-size:13px;">
-            ${linhas}
-          </table>
-          <button id="fecharPainel" style="width:100%;margin-top:18px;padding:10px;background:var(--panel-raised);border:1px solid var(--line);color:var(--text);border-radius:8px;cursor:pointer;">Fechar</button>
+      const overlay = document.createElement('div');
+      overlay.className = 'painel-overlay';
+      overlay.innerHTML = `
+        <div class="painel-box">
+          <h3>Meu painel</h3>
+          <p class="total">Total comprado: <strong>${data.total_gemas_compradas} gemas</strong></p>
+          <table>${linhas}</table>
+          <button class="fechar" id="fecharPainel">Fechar</button>
         </div>
       `;
-      document.body.appendChild(modal);
-      document.getElementById('fecharPainel').addEventListener('click', () => modal.remove());
-      modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+      document.body.appendChild(overlay);
+      document.getElementById('fecharPainel').addEventListener('click', () => overlay.remove());
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
     } catch (err) {
       console.error('Erro ao abrir painel:', err);
     }
