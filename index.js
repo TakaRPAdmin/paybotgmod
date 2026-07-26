@@ -5,6 +5,14 @@ const session = require('express-session');
 const SteamAuth = require('node-steam-openid');
 const axios = require('axios');
 const crypto = require('crypto');
+const fetch = require('node-fetch');
+const {
+  Client: DiscordClient,
+  GatewayIntentBits,
+  REST,
+  Routes,
+  SlashCommandBuilder,
+} = require('discord.js');
 
 const app = express();
 app.use(express.json());
@@ -14,7 +22,7 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'troque_esse_segredo_em_producao',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 1000 * 60 * 60 * 2 },
+  cookie: { maxAge: 1000 * 60 * 60 * 24 * 30 },
 }));
 
 const CONFIG = {
@@ -28,6 +36,16 @@ const CONFIG = {
   DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN || 'COLE_SEU_DISCORD_BOT_TOKEN_AQUI',
   DISCORD_GUILD_ID: '1496885760412880976',
   DISCORD_REQUIRED_ROLE_ID: '1506354185480962190',
+
+  // Secret separado do GMOD_SHARED_SECRET — é usado só pelo bot de
+  // verificação de idade do Discord (processo externo), não pelo addon Lua.
+  AGE_BOT_SHARED_SECRET: process.env.AGE_BOT_SHARED_SECRET || 'troque_por_outro_segredo_so_do_bot_de_idade',
+
+  // Bot de verificação de idade — agora roda dentro deste mesmo processo.
+  AGE_BOT_DISCORD_TOKEN: process.env.AGE_BOT_DISCORD_TOKEN || 'COLE_O_TOKEN_DO_BOT_AQUI',
+  AGE_BOT_CLIENT_ID: process.env.AGE_BOT_CLIENT_ID || '1506350438314934412',
+  AGE_BOT_ROLE_ID: process.env.AGE_BOT_ROLE_ID || 'COLE_O_ROLE_ID_AQUI',
+  ENTRAR_APP_ID: process.env.ENTRAR_APP_ID || 'COLE_O_APP_ID_DA_ENTRAR_API_AQUI',
 };
 
 const steam = new SteamAuth({
@@ -41,6 +59,20 @@ const DISCORD_API = 'https://discord.com/api/v10';
 const pedidos = {};
 const filaCreditos = [];
 const jogadoresOnline = new Set();
+
+// ============================================
+// VINCULAÇÃO PERSISTENTE STEAMID <-> DISCORD ID
+// Preenchido assim que alguém loga com os dois no site.
+// Consumido pelo addon Lua via /gmod/verificados-idade.
+// ============================================
+const vinculos = {}; // { steamid64: { discordId, temCargo, verificadoEm, jaEnviadoAoJogo } }
+
+// Preenchido pelo bot de verificação de idade do Discord (processo externo,
+// separado deste backend). O bot NUNCA envia CPF, nome ou data de nascimento
+// aqui — só o resultado final já calculado por ele: maiorDeIdade (true/false)
+// vinculado ao Discord ID. Indexado por Discord ID porque é só isso que o
+// bot conhece (ele não sabe o SteamID do jogador).
+const verificacoesIdadePorDiscordId = {}; // { discordId: { maiorDeIdade, verificadoEm } }
 
 const PACOTES = {
   '80':    { gemas: 80,    preco: 1.99 },
@@ -89,6 +121,11 @@ app.get('/auth/steam/callback', async (req, res) => {
       username: user.username,
       avatar: user.avatar.medium,
     };
+
+    // Se o Discord já tinha sido feito antes (ordem inversa de login),
+    // já grava/atualiza o vínculo persistente agora.
+    await atualizarVinculoSeCompleto(req);
+
     res.redirect('/');
   } catch (error) {
     console.error('Erro na autenticação Steam:', error.message);
@@ -149,6 +186,10 @@ app.get('/auth/discord/callback', async (req, res) => {
         : null,
     };
 
+    // Se já tiver Steam logado nessa mesma sessão, já grava o vínculo
+    // persistente agora mesmo (não precisa esperar uma compra).
+    await atualizarVinculoSeCompleto(req);
+
     res.redirect('/');
   } catch (error) {
     console.error('Erro no callback Discord:', error.response?.data || error.message);
@@ -196,7 +237,33 @@ app.get('/discord/status-cargo', async (req, res) => {
 });
 
 // ============================================
-// LOGOUT (encerra as duas sessões, Steam e Discord)
+// VÍNCULO PERSISTENTE STEAMID <-> DISCORD (+ CARGO)
+// Chamado sempre que Steam OU Discord acabou de logar, pra checar
+// se agora os dois existem na sessão e já gravar/atualizar o vínculo.
+// ============================================
+async function atualizarVinculoSeCompleto(req) {
+  if (!req.session.steamUser || !req.session.discordUser) return;
+
+  const steamid = req.session.steamUser.steamid;
+  const discordId = req.session.discordUser.id;
+
+  // "Verificado" pode vir de duas fontes independentes: o cargo Discord
+  // atribuído manualmente/por staff, OU o resultado que o bot de
+  // verificação de idade já gravou nesse Discord ID. Basta uma bater.
+  const temCargoDiscord = await temCargoExigido(discordId);
+  const verificacaoBot = verificacoesIdadePorDiscordId[discordId];
+  const temCargo = temCargoDiscord || (verificacaoBot?.maiorDeIdade === true);
+
+  vinculos[steamid] = {
+    discordId,
+    temCargo,
+    verificadoEm: Date.now(),
+    jaEnviadoAoJogo: temCargo ? (vinculos[steamid]?.jaEnviadoAoJogo || false) : false,
+  };
+}
+
+// ============================================
+// LOGOUT
 // ============================================
 
 app.post('/auth/logout', (req, res) => {
@@ -204,7 +271,7 @@ app.post('/auth/logout', (req, res) => {
 });
 
 // ============================================
-// GMOD BRIDGE (heartbeat, fila de créditos)
+// GMOD BRIDGE (heartbeat, fila de créditos, verificação de idade)
 // ============================================
 
 function jogadorEstaOnline(steamid64) {
@@ -244,6 +311,59 @@ app.post('/gmod/confirmar', (req, res) => {
   const idx = filaCreditos.findIndex(c => c.id === id);
   if (idx !== -1) {
     filaCreditos.splice(idx, 1);
+  }
+
+  res.json({ ok: true });
+});
+
+// ============================================
+// RESULTADO DO BOT DE VERIFICAÇÃO DE IDADE (Discord)
+// Chamado pelo bot.js (processo externo, separado deste backend) depois
+// que ele já calculou maior_de_idade via callback do serviço de
+// verificação. Este backend NUNCA recebe CPF, nome ou data de nascimento
+// — apenas o resultado final, já processado pelo bot.
+// ============================================
+app.post('/discord/resultado-verificacao-idade', (req, res) => {
+  const { discordId, maiorDeIdade, secret } = req.body;
+
+  if (secret !== CONFIG.AGE_BOT_SHARED_SECRET) {
+    return res.status(401).json({ erro: 'Secret inválido' });
+  }
+
+  if (!discordId || typeof maiorDeIdade !== 'boolean') {
+    return res.status(400).json({ erro: 'discordId e maiorDeIdade (boolean) são obrigatórios' });
+  }
+
+  registrarResultadoVerificacaoIdade(discordId, maiorDeIdade);
+  res.json({ ok: true });
+});
+
+// Rota nova: addon consulta quem já verificou +18 e ainda não foi
+// avisado ao jogo. Depois de entregar, marca jaEnviadoAoJogo=true
+// (via /gmod/confirmar-idade) pra não reenviar sempre.
+app.get('/gmod/verificados-idade', (req, res) => {
+  const { secret } = req.query;
+
+  if (secret !== CONFIG.GMOD_SHARED_SECRET) {
+    return res.status(401).json({ erro: 'Secret inválido' });
+  }
+
+  const pendentesDeEnvio = Object.entries(vinculos)
+    .filter(([_, v]) => v.temCargo && !v.jaEnviadoAoJogo)
+    .map(([steamid, v]) => ({ steamid, discordId: v.discordId }));
+
+  res.json({ verificados: pendentesDeEnvio });
+});
+
+app.post('/gmod/confirmar-idade', (req, res) => {
+  const { steamid, secret } = req.body;
+
+  if (secret !== CONFIG.GMOD_SHARED_SECRET) {
+    return res.status(401).json({ erro: 'Secret inválido' });
+  }
+
+  if (vinculos[steamid]) {
+    vinculos[steamid].jaEnviadoAoJogo = true;
   }
 
   res.json({ ok: true });
@@ -323,6 +443,11 @@ app.post('/gerar-pix', async (req, res) => {
     if (!temCargo) {
       return res.status(403).json({ erro: 'Você precisa ter o cargo Verificado +18 no Discord para comprar.' });
     }
+
+    // Já que confirmamos os dois logins + cargo aqui, garante que o
+    // vínculo está gravado (cobre o caso de sessão antiga que nunca
+    // passou pelo callback do Discord depois da Steam, por exemplo).
+    await atualizarVinculoSeCompleto(req);
 
     if (!pacote || !PACOTES[pacote]) {
       return res.status(400).json({ erro: 'Pacote inválido' });
@@ -463,6 +588,164 @@ function enfileirarCredito(steamid, quantidade) {
     quantidade,
     criado_em: Date.now(),
   });
+}
+
+// ============================================
+// BOT DE VERIFICAÇÃO DE IDADE (Discord) — roda no mesmo processo
+// ============================================
+// Fluxo: /verificar no Discord -> link da entrar.api.br -> usuário
+// completa lá -> callback chega em /age-verify/callback (rota deste
+// mesmo Express, abaixo) -> calcula maiorDeIdade -> atribui cargo no
+// Discord -> grava resultado em verificacoesIdadePorDiscordId.
+// Este processo NUNCA armazena CPF, nome ou data de nascimento —
+// só o booleano final.
+
+const filaAguardandoVerificacao = [];
+
+const ageBotClient = new DiscordClient({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+  ],
+});
+
+async function registrarComandoVerificar() {
+  const commands = [
+    new SlashCommandBuilder()
+      .setName('verificar')
+      .setDescription('Verifica sua idade para acessar recursos +18 do servidor')
+      .toJSON(),
+  ];
+  const rest = new REST({ version: '10' }).setToken(CONFIG.AGE_BOT_DISCORD_TOKEN);
+  await rest.put(
+    Routes.applicationGuildCommands(CONFIG.AGE_BOT_CLIENT_ID, CONFIG.DISCORD_GUILD_ID),
+    { body: commands }
+  );
+  console.log('[AgeBot] Comando /verificar registrado');
+}
+
+ageBotClient.once('clientReady', async () => {
+  console.log(`[AgeBot] Online como ${ageBotClient.user.tag}`);
+  await registrarComandoVerificar();
+});
+
+ageBotClient.on('interactionCreate', async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+  if (interaction.commandName !== 'verificar') return;
+
+  const userId = interaction.user.id;
+  const member = interaction.member;
+
+  if (member.roles.cache.has(CONFIG.AGE_BOT_ROLE_ID)) {
+    await interaction.reply({ content: '✅ Você já está verificado como maior de 18 anos!', flags: 64 });
+    return;
+  }
+
+  const itemFila = { userId, criadoEm: Date.now() };
+  filaAguardandoVerificacao.push(itemFila);
+
+  const urlVerificacao = `https://cpf.entrar.api.br/?appId=${CONFIG.ENTRAR_APP_ID}`;
+
+  await interaction.reply({
+    content:
+      '🔐 **Verificação de Maioridade**\n\n' +
+      `Clique no link abaixo, informe seu CPF e data de nascimento, e resolva o captcha:\n${urlVerificacao}\n\n` +
+      '_Este servidor não recebe nem armazena seu CPF ou data de nascimento — apenas o resultado (maior/menor de idade)._\n' +
+      '_Esse link expira em 10 minutos. Complete a verificação antes de pedir uma nova._',
+    flags: 64,
+  });
+
+  setTimeout(() => {
+    const idx = filaAguardandoVerificacao.indexOf(itemFila);
+    if (idx !== -1) filaAguardandoVerificacao.splice(idx, 1);
+  }, 10 * 60 * 1000);
+});
+
+function calcularIdade(dataNascimentoStr) {
+  const nascimento = new Date(dataNascimentoStr);
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - nascimento.getFullYear();
+  const aindaNaoFezAniversario =
+    hoje.getMonth() < nascimento.getMonth() ||
+    (hoje.getMonth() === nascimento.getMonth() && hoje.getDate() < nascimento.getDate());
+  if (aindaNaoFezAniversario) idade--;
+  return idade;
+}
+
+// Registra o resultado final (booleano) — chamada tanto pelo callback
+// abaixo quanto (se algum dia precisar) pela rota HTTP externa.
+function registrarResultadoVerificacaoIdade(discordId, maiorDeIdade) {
+  verificacoesIdadePorDiscordId[discordId] = {
+    maiorDeIdade,
+    verificadoEm: Date.now(),
+  };
+
+  for (const vinculo of Object.values(vinculos)) {
+    if (vinculo.discordId === discordId) {
+      vinculo.temCargo = maiorDeIdade;
+      vinculo.jaEnviadoAoJogo = false;
+    }
+  }
+
+  console.log(`[AgeBot] Discord ${discordId} => maiorDeIdade=${maiorDeIdade}`);
+}
+
+async function liberarAcessoDiscord(userId) {
+  const guild = await ageBotClient.guilds.fetch(CONFIG.DISCORD_GUILD_ID);
+  const member = await guild.members.fetch(userId);
+  await member.roles.add(CONFIG.AGE_BOT_ROLE_ID);
+  console.log(`[AgeBot] Cargo atribuído: ${userId}`);
+}
+
+// Callback do serviço de verificação. CPF/nome/nascimento passam por
+// aqui só em memória volátil, dentro desta função — nunca são
+// atribuídos a verificacoesIdadePorDiscordId nem persistidos em
+// nenhum lugar do backend.
+app.get('/age-verify/callback', async (req, res) => {
+  const { session: sessionId } = req.query;
+
+  if (!sessionId) {
+    res.status(400).send('Requisição inválida: faltando session.');
+    return;
+  }
+
+  const itemFila = filaAguardandoVerificacao.shift();
+  if (!itemFila) {
+    res.status(400).send('Nenhuma verificação pendente encontrada. Use /verificar novamente no Discord.');
+    return;
+  }
+
+  try {
+    const sessionRes = await fetch(`https://cpf.entrar.api.br/api/session/${sessionId}`);
+    const sessionData = await sessionRes.json();
+
+    if (!sessionData || sessionData.status !== true) {
+      res.send('❌ Verificação falhou ou foi cancelada. Volte ao Discord e use /verificar novamente.');
+      return;
+    }
+
+    const idade = calcularIdade(sessionData.dataNascimento);
+    const userId = itemFila.userId;
+    const maiorDeIdade = idade >= 18;
+
+    registrarResultadoVerificacaoIdade(userId, maiorDeIdade);
+
+    if (maiorDeIdade) {
+      await liberarAcessoDiscord(userId);
+      res.send('✅ Verificação aprovada! Você já pode voltar ao Discord — seu cargo foi liberado.');
+    } else {
+      res.send('🔒 Verificação não aprovada: idade mínima de 18 anos não confirmada. Você pode continuar jogando normalmente com Ryo.');
+    }
+  } catch (err) {
+    console.error('[AgeBot] Erro ao consultar sessão:', err.message);
+    res.status(500).send('Ocorreu um erro ao processar sua verificação. Tente novamente mais tarde.');
+  }
+});
+
+if (CONFIG.AGE_BOT_DISCORD_TOKEN && CONFIG.AGE_BOT_DISCORD_TOKEN !== 'COLE_O_TOKEN_DO_BOT_AQUI') {
+  ageBotClient.login(CONFIG.AGE_BOT_DISCORD_TOKEN);
+} else {
+  console.log('[AgeBot] AGE_BOT_DISCORD_TOKEN não configurado — bot de verificação de idade não foi iniciado.');
 }
 
 app.get('/', (req, res) => {
