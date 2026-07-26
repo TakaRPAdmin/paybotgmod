@@ -22,6 +22,12 @@ const CONFIG = {
   GMOD_SHARED_SECRET: process.env.GMOD_SHARED_SECRET || 'troque_por_um_segredo_compartilhado_com_o_addon',
   STEAM_API_KEY: process.env.STEAM_API_KEY || 'COLE_SUA_STEAM_API_KEY_AQUI',
   SITE_URL: process.env.SITE_URL || 'http://localhost:3001',
+
+  DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID || 'COLE_SEU_DISCORD_CLIENT_ID_AQUI',
+  DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET || 'COLE_SEU_DISCORD_CLIENT_SECRET_AQUI',
+  DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN || 'COLE_SEU_DISCORD_BOT_TOKEN_AQUI',
+  DISCORD_GUILD_ID: '1496885760412880976',
+  DISCORD_REQUIRED_ROLE_ID: '1506354185480962190',
 };
 
 const steam = new SteamAuth({
@@ -30,9 +36,11 @@ const steam = new SteamAuth({
   apiKey: CONFIG.STEAM_API_KEY,
 });
 
+const DISCORD_API = 'https://discord.com/api/v10';
+
 const pedidos = {};
-const filaCreditos = []; // [{ id, steamid, quantidade }] — consumida pelo addon Lua via HTTP
-const jogadoresOnline = new Set(); // atualizado pelo próprio addon Lua a cada heartbeat
+const filaCreditos = [];
+const jogadoresOnline = new Set();
 
 const PACOTES = {
   '80':    { gemas: 80,    preco: 1.99 },
@@ -59,6 +67,10 @@ function carregarCupons() {
 
 const CUPONS = carregarCupons();
 
+// ============================================
+// STEAM AUTH
+// ============================================
+
 app.get('/auth/steam', async (req, res) => {
   try {
     const redirectUrl = await steam.getRedirectUrl();
@@ -84,10 +96,6 @@ app.get('/auth/steam/callback', async (req, res) => {
   }
 });
 
-app.post('/auth/logout', (req, res) => {
-  req.session.destroy(() => res.json({ ok: true }));
-});
-
 app.get('/auth/me', (req, res) => {
   if (req.session.steamUser) {
     res.json({ logado: true, ...req.session.steamUser });
@@ -95,6 +103,109 @@ app.get('/auth/me', (req, res) => {
     res.json({ logado: false });
   }
 });
+
+// ============================================
+// DISCORD AUTH + VERIFICAÇÃO DE CARGO
+// ============================================
+
+app.get('/auth/discord', (req, res) => {
+  const params = new URLSearchParams({
+    client_id: CONFIG.DISCORD_CLIENT_ID,
+    redirect_uri: `${CONFIG.SITE_URL}/auth/discord/callback`,
+    response_type: 'code',
+    scope: 'identify guilds.members.read',
+  });
+  res.redirect(`https://discord.com/oauth2/authorize?${params.toString()}`);
+});
+
+app.get('/auth/discord/callback', async (req, res) => {
+  const { code } = req.query;
+  if (!code) return res.redirect('/?erro=discord_sem_code');
+
+  try {
+    const tokenResp = await axios.post(
+      `${DISCORD_API}/oauth2/token`,
+      new URLSearchParams({
+        client_id: CONFIG.DISCORD_CLIENT_ID,
+        client_secret: CONFIG.DISCORD_CLIENT_SECRET,
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: `${CONFIG.SITE_URL}/auth/discord/callback`,
+      }),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+
+    const { access_token } = tokenResp.data;
+
+    const userResp = await axios.get(`${DISCORD_API}/users/@me`, {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+
+    req.session.discordUser = {
+      id: userResp.data.id,
+      username: userResp.data.username,
+      avatar: userResp.data.avatar
+        ? `https://cdn.discordapp.com/avatars/${userResp.data.id}/${userResp.data.avatar}.png`
+        : null,
+    };
+
+    res.redirect('/');
+  } catch (error) {
+    console.error('Erro no callback Discord:', error.response?.data || error.message);
+    res.redirect('/?erro=discord_falhou');
+  }
+});
+
+app.get('/auth/discord/me', (req, res) => {
+  if (req.session.discordUser) {
+    res.json({ logado: true, ...req.session.discordUser });
+  } else {
+    res.json({ logado: false });
+  }
+});
+
+async function temCargoExigido(discordUserId) {
+  try {
+    const resp = await axios.get(
+      `${DISCORD_API}/guilds/${CONFIG.DISCORD_GUILD_ID}/members/${discordUserId}`,
+      { headers: { Authorization: `Bot ${CONFIG.DISCORD_BOT_TOKEN}` } }
+    );
+
+    const roles = resp.data.roles || [];
+    return roles.includes(CONFIG.DISCORD_REQUIRED_ROLE_ID);
+  } catch (error) {
+    if (error.response?.status === 404) {
+      return false;
+    }
+    console.error('Erro ao verificar cargo Discord:', error.response?.data || error.message);
+    return false;
+  }
+}
+
+app.get('/discord/status-cargo', async (req, res) => {
+  if (!req.session.discordUser) {
+    return res.json({ logado: false, tem_cargo: false });
+  }
+
+  const temCargo = await temCargoExigido(req.session.discordUser.id);
+  res.json({
+    logado: true,
+    username: req.session.discordUser.username,
+    tem_cargo: temCargo,
+  });
+});
+
+// ============================================
+// LOGOUT (encerra as duas sessões, Steam e Discord)
+// ============================================
+
+app.post('/auth/logout', (req, res) => {
+  req.session.destroy(() => res.json({ ok: true }));
+});
+
+// ============================================
+// GMOD BRIDGE (heartbeat, fila de créditos)
+// ============================================
 
 function jogadorEstaOnline(steamid64) {
   return jogadoresOnline.has(steamid64);
@@ -147,6 +258,10 @@ app.get('/status-jogador/:steamid', async (req, res) => {
   }
 });
 
+// ============================================
+// CUPONS
+// ============================================
+
 app.get('/validar-cupom/:codigo', (req, res) => {
   const codigo = req.params.codigo.trim().toUpperCase();
   const desconto = CUPONS[codigo];
@@ -157,6 +272,10 @@ app.get('/validar-cupom/:codigo', (req, res) => {
 
   res.json({ valido: true, codigo, desconto_percentual: desconto });
 });
+
+// ============================================
+// PAINEL PESSOAL
+// ============================================
 
 app.get('/meu-painel', (req, res) => {
   if (!req.session.steamUser) {
@@ -184,12 +303,25 @@ app.get('/meu-painel', (req, res) => {
   });
 });
 
+// ============================================
+// GERAR PIX
+// ============================================
+
 app.post('/gerar-pix', async (req, res) => {
   try {
     const { pacote, steamid, email, cupom } = req.body;
 
     if (!req.session.steamUser || req.session.steamUser.steamid !== steamid) {
       return res.status(401).json({ erro: 'É necessário fazer login com a Steam antes de comprar.' });
+    }
+
+    if (!req.session.discordUser) {
+      return res.status(403).json({ erro: 'É necessário fazer login com o Discord antes de comprar.' });
+    }
+
+    const temCargo = await temCargoExigido(req.session.discordUser.id);
+    if (!temCargo) {
+      return res.status(403).json({ erro: 'Você precisa ter o cargo Verificado +18 no Discord para comprar.' });
     }
 
     if (!pacote || !PACOTES[pacote]) {
@@ -254,6 +386,10 @@ app.post('/gerar-pix', async (req, res) => {
   }
 });
 
+// ============================================
+// STATUS DO PAGAMENTO
+// ============================================
+
 app.get('/status-pagamento/:id', async (req, res) => {
   try {
     const paymentId = req.params.id;
@@ -286,6 +422,10 @@ app.get('/status-pagamento/:id', async (req, res) => {
     res.status(500).json({ erro: 'Erro ao consultar status' });
   }
 });
+
+// ============================================
+// WEBHOOK MERCADO PAGO
+// ============================================
 
 app.post('/webhook', async (req, res) => {
   try {
